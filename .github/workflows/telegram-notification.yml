@@ -1,27 +1,40 @@
-name: Telegram Notification
+name: Website Health & Telegram Notification
 
 on:
-  push:x
+  push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
-  workflow_dispatch:  # Allow manual triggering
+  workflow_dispatch:  # Manual trigger
 
 jobs:
-  notify:
+  website-monitor:
     runs-on: ubuntu-latest
-    
+
     steps:
     - uses: actions/checkout@v4
-      
-    - name: Send Telegram Notification
+
+    - name: Check Website Status
+      id: check_website
+      run: |
+        STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://your-website.com)
+        echo "HTTP_STATUS=$STATUS" >> $GITHUB_ENV
+        if [ "$STATUS" -ge 200 ] && [ "$STATUS" -lt 400 ]; then
+          echo "✅ Website is up with status $STATUS"
+        else
+          echo "❌ Website is down or unreachable. Status: $STATUS"
+          echo "down=true" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Send Telegram Notification if Website is Down
+      if: steps.check_website.outputs.down == 'true'
       uses: appleboy/telegram-action@master
       with:
         to: ${{ secrets.TELEGRAM_CHAT_ID }}
         token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         format: markdown
         message: |
-          *GitHub Action Notification*
+          *🚨 Website Down Notification!*
           
           *Repository:* `${{ github.repository }}`
           *Event:* `${{ github.event_name }}`
@@ -29,6 +42,7 @@ jobs:
           *Commit:* `${{ github.sha }}`
           
           *Actor:* `${{ github.actor }}`
-          *Status:* ${{ job.status }}
+          *Status:* ❌ Website is down or unreachable
+          *HTTP Code:* `${{ env.HTTP_STATUS }}`
           
           [View Action Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
