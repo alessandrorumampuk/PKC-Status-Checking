@@ -1,0 +1,34 @@
+name: Telegram Notification
+
+on:
+  push:x
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+      
+    - name: Send Telegram Notification
+      uses: appleboy/telegram-action@master
+      with:
+        to: ${{ secrets.TELEGRAM_CHAT_ID }}
+        token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        format: markdown
+        message: |
+          *GitHub Action Notification*
+          
+          *Repository:* `${{ github.repository }}`
+          *Event:* `${{ github.event_name }}`
+          *Branch:* `${{ github.ref_name }}`
+          *Commit:* `${{ github.sha }}`
+          
+          *Actor:* `${{ github.actor }}`
+          *Status:* ${{ job.status }}
+          
+          [View Action Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
